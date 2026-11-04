@@ -1,0 +1,84 @@
+Tabii ki, `components/UploadZone.tsx` dosyasını güncelleme konusunda size yardımcı olacağım. İşte güncellenmiş bir örneği:
+
+```tsx
+import React, { useState } from 'react';
+import { Upload, message } from 'antd';
+import { InboxOutlined } from '@ant-design/icons';
+import { Typography, Card, Row, Col } from 'antd';
+import { observer } from 'mobx-react';
+import logger from '../utils/logger'; // Gelişmiş logger paneli
+
+const { Dragger } = Upload;
+const { Title, Text } = Typography;
+
+const UploadZone: React.FC = observer(() => {
+  const [fileList, setFileList] = useState([]);
+
+  const props = {
+    name: 'file',
+    multiple: true,
+    accept: 'image/*',
+    beforeUpload: (file) => {
+      const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+      if (!isJpgOrPng) {
+        message.error(`${file.name} is not a jpeg/png file!`);
+      }
+      const isLt2M = file.size / 1024 / 1024 < 2;
+      if (!isLt2M) {
+        message.error(`${file.name} is too large!`);
+      }
+      logger.info(`File ${file.name} is being uploaded.`);
+      return isJpgOrPng && isLt2M;
+    },
+    onChange(info) {
+      const { status } = info.file;
+      if (status !== 'uploading') {
+        logger.info(`File ${info.file.name} upload status: ${status}`);
+      }
+      if (status === 'done') {
+        message.success(`${info.file.name} file uploaded successfully.`);
+        setFileList(info.fileList);
+      } else if (status === 'error') {
+        message.error(`${info.file.name} file upload failed.`);
+      }
+    },
+  };
+
+  return (
+    <Card style={{ backgroundColor: '#f0f8ff', padding: '20px', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+      <Row justify="center" align="middle" style={{ marginBottom: '20px' }}>
+        <Col>
+          <Title level={2} style={{ color: '#696969', fontFamily: 'French Script MT, cursive', textAlign: 'center' }}>
+            Upload Your Image
+          </Title>
+          <Text style={{ color: '#696969', fontFamily: 'French Script MT, cursive', textAlign: 'center' }}>
+            Drag and drop your image here, or click to select a file.
+          </Text>
+        </Col>
+      </Row>
+      <Dragger {...props}>
+        <p className="ant-upload-drag-icon">
+          <InboxOutlined />
+        </p>
+        <p className="ant-upload-text">Click or drag file to this area to upload</p>
+        <p className="ant-upload-hint">Support for a single or bulk upload. Strictly prohibit from uploading company data or other band files</p>
+      </Dragger>
+      <Row justify="center" align="middle" style={{ marginTop: '20px' }}>
+        <Col>
+          {fileList.map((file) => (
+            <div key={file.uid} style={{ marginBottom: '10px', color: '#696969', fontFamily: 'French Script MT, cursive' }}>
+              {file.name}
+            </div>
+          ))}
+        </Col>
+      </Row>
+    </Card>
+  );
+});
+
+export default UploadZone;
+```
+
+Bu kod, `UploadZone.tsx` dosyasını krem tonlarına (`#f0f8ff`), `French Script MT` fontuna ve gelişmiş logger paneline uygun olarak günceller. Kullanıcı arayüzü daha estetik ve kullanıcı dostu hale gelir.
+
+Bu değişikliklerin ardından, `components/UploadZone.tsx` dosyasını kaydedebilir ve uygulamanızı yeniden başlatmanız gerekecek.
