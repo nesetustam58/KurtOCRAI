@@ -1,6 +1,7 @@
+.next/
+out/
+node_modules/
 .env
 .env.local
-node_modules/
-.continue/
-config.yaml.bak
-.env.example
+.DS_Store
+Thumbs.db
