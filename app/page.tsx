@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { createWorker } from "tesseract.js";
 import { OcrEvaluationEngine, TestLibraryItem } from "../lib/ocrEvaluationEngine";
 import { OcrWebResearchAgent } from "../lib/ocrWebResearchAgent";
@@ -512,6 +513,16 @@ export default function Home() {
 
         {/* 📚 Test Kütüphanesi */}
         <TestLibraryPanel testLibrary={testLibrary} onClearLibrary={clearLibraryData} />
+
+        {/* ⚡ Ar-Ge Laboratuvarı Gizli Bağlantısı */}
+        <div className="mt-12 pt-6 border-t border-[var(--border)] flex justify-end">
+          <Link
+            href="/benchmark"
+            className="text-xs text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors flex items-center gap-1 font-medium"
+          >
+            <span>⚡</span> Ar-Ge Benchmark Lab
+          </Link>
+        </div>
       </main>
     </div>
   );
