@@ -44,7 +44,7 @@ export class OcrEvaluationEngine {
       const formattedLines = lines.map((line) => {
         let trimmed = line.trim();
         if (/^[ivxlcdm]+\b/i.test(trimmed) && !trimmed.includes('.')) {
-          detectedErrors.log ? null : detectedErrors.push("Romen rakamı biçimlendirildi");
+          detectedErrors.includes("Romen rakamı biçimlendirildi") ? null : detectedErrors.push("Romen rakamı biçimlendirildi");
           return '\n' + trimmed;
         }
         return trimmed;
