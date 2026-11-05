@@ -191,7 +191,7 @@ export default function Home() {
       
       const worker = await createWorker("tur+eng");
       await worker.setParameters({
-        tessedit_pageseg_mode: docType === 'fis' ? '4' : '6',
+        tessedit_pageseg_mode: docType === fis' ? '4' : '6') as any,
       });
 
       const ret = await worker.recognize(processedImageUrl);
