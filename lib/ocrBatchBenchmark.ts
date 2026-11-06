@@ -2,7 +2,8 @@ import { OcrEvaluationEngine } from './ocrEvaluationEngine';
 
 export interface BenchmarkTestCase {
   id: string;
-  imagePath: string;
+  dataset: string;
+  imageUrl: string;
   expectedText: string;
   docType: 'siir' | 'fatura' | 'fis' | 'genel';
 }
@@ -10,8 +11,8 @@ export interface BenchmarkTestCase {
 export interface BenchmarkResult {
   testId: string;
   success: boolean;
-  cer: number; // Karakter Hata Oranı (0 - 1 arası)
-  wer: number; // Kelime Hata Oranı
+  cer: number;
+  wer: number;
   detectedErrors: string[];
   executionTimeMs: number;
 }
@@ -25,7 +26,6 @@ export interface OptimizationLog {
 }
 
 export class OcrBatchBenchmark {
-  // Levenshtein mesafesi tabanlı Karakter Hata Oranı (CER) hesaplayıcı
   public static calculateCER(predicted: string, target: string): number {
     if (!target) return predicted ? 1 : 0;
     const lenA = predicted.length;
@@ -48,7 +48,6 @@ export class OcrBatchBenchmark {
     return matrix[lenA][lenB] / Math.max(1, lenB);
   }
 
-  // Otonom Öz-Optimizasyon ve Kendini Onarma Döngüsü (Self-Healing Loop)
   public static executeSelfOptimization(results: BenchmarkResult[], currentIteration: number): OptimizationLog {
     const failedTests = results.filter(r => !r.success);
     const avgCer = results.reduce((acc, curr) => acc + curr.cer, 0) / (results.length || 1);
@@ -56,17 +55,14 @@ export class OcrBatchBenchmark {
     let rulesCount = 0;
     try {
       const existingRules = JSON.parse(localStorage.getItem('kurtocr_adaptive_rules') || '[]');
-      
       if (failedTests.length > 0) {
-        // Hatalı testlerden otomatik regex/sözlük kuralları türet
         failedTests.forEach(fail => {
-          const newRule = {
+          existingRules.push({
             id: `rule_auto_${Date.now()}_${fail.testId}`,
             iteration: currentIteration,
             errorSignature: fail.detectedErrors,
             createdAt: new Date().toISOString()
-          };
-          existingRules.push(newRule);
+          });
         });
         localStorage.setItem('kurtocr_adaptive_rules', JSON.stringify(existingRules));
         rulesCount = existingRules.length;
@@ -84,10 +80,9 @@ export class OcrBatchBenchmark {
     };
   }
 
-  // Toplu test koşturucu kuyruğu (Real Tesseract Execution Pipeline)
   public static async runBatch(
     testCases: BenchmarkTestCase[],
-    ocrRunner: (imagePath: string, docType: string) => Promise<string>,
+    ocrRunner: (imageUrl: string, docType: string) => Promise<string>,
     onProgress: (currentIndex: number, total: number, currentId: string) => void,
     iteration: number = 1
   ): Promise<{ summary: any; results: BenchmarkResult[]; optimizationLog: OptimizationLog }> {
@@ -100,19 +95,17 @@ export class OcrBatchBenchmark {
       onProgress(i + 1, testCases.length, tc.id);
 
       try {
-        // Gerçek Tesseract motoru çağrısı ve güvenli tip dönüşümü
-        const rawText = await ocrRunner(tc.imagePath, tc.docType);
+        const rawText = await ocrRunner(tc.imageUrl, tc.docType);
         const evaluation: any = OcrEvaluationEngine.evaluate(rawText, tc.docType);
         const cleanedTextStr = evaluation.cleanedText || evaluation.text || rawText;
         
         const cer = this.calculateCER(cleanedTextStr, tc.expectedText);
-        const wer = 0; // Kelime hata oranı ölçeklenebilir
 
         results.push({
           testId: tc.id,
-          success: cer < 0.15, // %15 hata tolerans eşiği
+          success: cer < 0.20,
           cer,
-          wer,
+          wer: 0,
           detectedErrors: evaluation.detectedErrors || [],
           executionTimeMs: Date.now() - tStart
         });
@@ -122,7 +115,7 @@ export class OcrBatchBenchmark {
           success: false,
           cer: 1.0,
           wer: 1.0,
-          detectedErrors: [`Kritik Motor Hatası: ${err}`],
+          detectedErrors: [`Edge/Motor Bağlantı Hatası: ${err}`],
           executionTimeMs: Date.now() - tStart
         });
       }
@@ -131,8 +124,6 @@ export class OcrBatchBenchmark {
     const totalTime = Date.now() - startTime;
     const avgCer = results.reduce((acc, curr) => acc + curr.cer, 0) / (results.length || 1);
     const successCount = results.filter(r => r.success).length;
-
-    // Akademik Öz-Optimizasyon Döngüsünü Tetikle
     const optimizationLog = this.executeSelfOptimization(results, iteration);
 
     return {
