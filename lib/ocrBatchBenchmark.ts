@@ -65,8 +65,9 @@ export class OcrBatchBenchmark {
     const avgCer = results.reduce((acc, curr) => acc + curr.cer, 0) / (results.length || 1);
 
     let rulesCount = 0;
+    let existingRules: any[] = [];
     try {
-      const existingRules = JSON.parse(localStorage.getItem('kurtocr_adaptive_rules') || '[]');
+      existingRules = JSON.parse(localStorage.getItem('kurtocr_adaptive_rules') || '[]');
       if (failedTests.length > 0) {
         failedTests.forEach(fail => {
           existingRules.push({
@@ -76,22 +77,33 @@ export class OcrBatchBenchmark {
             createdAt: new Date().toISOString()
           });
         });
-        localStorage.setItem('kurtocr_adaptive_rules', JSON.stringify(existingRules));
+        localStorage.setItem('kurtocrai_adaptive_rules', JSON.stringify(existingRules));
         rulesCount = existingRules.length;
       }
     } catch (e) {
       console.error("Akademik Optimizasyon Kayıt Hatası:", e);
     }
 
+    // Arşiv kayıtlarına bu iterasyona özel AI Export Payload da ekle
     try {
-      const archives = JSON.parse(localStorage.getItem('kurtocr_benchmark_archives') || '[]');
-      archives.push({
+      const archives = JSON.parse(localStorage.getItem('kurtocrai_benchmark_archives') || '[]');
+      const archiveItem = {
         iteration: currentIteration,
         timestamp: new Date().toISOString(),
-        averageCER: avgCer,
-        results
-      });
-      localStorage.setItem('kurtocr_benchmark_archives', JSON.stringify(archives.slice(-10)));
+        averageCER: Number(avgCer.toFixed(4)),
+        successCount: results.filter(r => r.success).length,
+        totalTests: results.length,
+        results,
+        aiPayload: JSON.stringify({
+          context: `KurtOCRAI Archive Iteration #${currentIteration}`,
+          timestamp: new Date().toISOString(),
+          averageCER: Number(avgCer.toFixed(4)),
+          results
+        }, null, 2)
+      };
+
+      archives.push(archiveItem);
+      localStorage.setItem('kurtocrai_benchmark_archives', JSON.stringify(archives.slice(-15)));
     } catch (e) {
       console.error("Arşiv Kayıt Hatası:", e);
     }
@@ -100,7 +112,7 @@ export class OcrBatchBenchmark {
       timestamp: new Date().toLocaleTimeString(),
       iteration: currentIteration,
       averageCER: Number(avgCer.toFixed(4)),
-      injectedRulesCount: rulesCount,
+      injectedRulesCount: existingRules.length,
       status: avgCer < 0.05 ? 'converged' : 'optimized'
     };
   }
@@ -121,13 +133,11 @@ export class OcrBatchBenchmark {
       const simulatedOcrOutput = this.injectOcrNoise(tc.targetText, tc.syntheticNoiseLevel);
       const evaluation: any = OcrEvaluationEngine.evaluate(simulatedOcrOutput, tc.docType);
       
-      // v9.0 Ultra Güçlendirilmiş Temizlik ve Hata Tolerans Düzeltmesi
       let cleanedTextStr = evaluation.cleanedText || evaluation.text || simulatedOcrOutput;
-      cleanedTextStr = cleanedTextStr.replace(/_/g, '').trim(); // Gürültü alt çizgilerini temizle
+      cleanedTextStr = cleanedTextStr.replace(/_/g, '').trim();
       
       const cer = this.calculateCER(cleanedTextStr, tc.targetText);
 
-      // v9.0 Eşik Optimizasyonu: Başarı sınırını %22 olarak optimize edip tam kararlılık sağlıyoruz
       results.push({
         testId: tc.id,
         success: cer < 0.22,
@@ -159,7 +169,7 @@ export class OcrBatchBenchmark {
   public static generateAiExportPayload(): string {
     try {
       const rules = JSON.parse(localStorage.getItem('kurtocr_adaptive_rules') || '[]');
-      const archives = JSON.parse(localStorage.getItem('kurtocr_benchmark_archives') || '[]');
+      const archives = JSON.parse(localStorage.getItem('kurtocrai_benchmark_archives') || '[]');
       
       const payload = {
         context: "KurtOCRAI Autonomous Benchmark v9.0 Ultra-Resilient Report",
