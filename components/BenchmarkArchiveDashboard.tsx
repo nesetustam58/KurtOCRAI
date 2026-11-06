@@ -10,11 +10,8 @@ export default function BenchmarkArchiveDashboard() {
   const loadArchives = () => {
     try {
       const saved = JSON.parse(localStorage.getItem('kurtocrai_benchmark_archives') || '[]');
-      // Eskiden yeniye / yeniden eskiye düzgün sıralama (Kopyayı bozmamak için kopya üzerinde reverse)
       const sorted = [...saved].reverse();
       setArchives(sorted);
-      
-      // Eğer seçili iterasyon yoksa veya listede kalmadıysa en üsttekini seç
       if (sorted.length > 0) {
         if (!selectedIteration || !sorted.some((a: any) => a.iteration === selectedIteration.iteration && a.timestamp === selectedIteration.timestamp)) {
           setSelectedIteration(sorted[0]);
@@ -49,7 +46,7 @@ export default function BenchmarkArchiveDashboard() {
       <div className="flex justify-between items-center mb-4">
         <div>
           <h4 className="text-lg font-bold text-gray-800">📂 Tıklanabilir Geçmiş Arşiv & İterasyon Logları</h4>
-          <p className="text-xs text-gray-500">Geçmiş test koşumlarının detaylarını inceleyin, iterasyonlar arasında gezinin.</p>
+          <p className="text-xs text-gray-500">Geçmiş test koşumlarının detaylarını inceleyin, kaynakçaları takip edin.</p>
         </div>
         {archives.length > 0 && (
           <button
@@ -66,9 +63,9 @@ export default function BenchmarkArchiveDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Sol Kolon: İterasyon Listesi */}
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-2 border-r border-gray-100">
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-2 border-r border-gray-100">
             {archives.map((arch, idx) => {
-              const isSelected = selectedIteration?.iteration === arch.iteration && selectedIteration?.timestamp === arch.timestamp;
+              const isSelected = selectedIteration?.iteration === arch.iteration && arch.timestamp === selectedIteration?.timestamp;
               return (
                 <div
                   key={idx}
@@ -84,7 +81,7 @@ export default function BenchmarkArchiveDashboard() {
                     <span className="font-mono">CER: %{(arch.averageCER * 100).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-gray-400">
-                    <span>{new Date(arch.timestamp).toLocaleDateString()} {new Date(arch.timestamp).toLocaleTimeString()}</span>
+                    <span>{new Date(arch.timestamp).toLocaleTimeString()}</span>
                     <span>{arch.successCount}/{arch.totalTests} Kararlı</span>
                   </div>
                 </div>
@@ -92,14 +89,14 @@ export default function BenchmarkArchiveDashboard() {
             })}
           </div>
 
-          {/* Sağ Kolon: Seçilen İterasyonun Detayları ve AI Kopyalama */}
-          <div className="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-100 max-h-72 overflow-y-auto flex flex-col justify-between">
+          {/* Sağ Kolon: Seçilen İterasyonun Künyesi ve Detayları */}
+          <div className="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-100 max-h-80 overflow-y-auto flex flex-col justify-between space-y-3">
             {selectedIteration ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-gray-200">
                   <div>
-                    <span className="text-xs font-bold text-gray-800">İterasyon #{selectedIteration.iteration} Detay Raporu</span>
-                    <span className="block text-[10px] text-gray-500 font-mono">Kayıt Zamanı: {new Date(selectedIteration.timestamp).toLocaleString()}</span>
+                    <span className="text-xs font-bold text-gray-800">İterasyon #{selectedIteration.iteration} Künye ve Detayları</span>
+                    <span className="block text-[10px] text-gray-500 font-mono">Tarih: {new Date(selectedIteration.timestamp).toLocaleString()}</span>
                   </div>
                   <button
                     onClick={() => handleCopyArchivePayload(selectedIteration)}
@@ -107,6 +104,13 @@ export default function BenchmarkArchiveDashboard() {
                   >
                     {copiedId === selectedIteration.iteration ? '✓ Kopyalandı!' : '📋 Bu İterasyon İçin AI JSON Kopyala'}
                   </button>
+                </div>
+
+                {/* Test Konusu ve Kaynak Bilgileri */}
+                <div className="bg-white p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
+                  <div><strong>Test Konusu:</strong> <span className="text-gray-600">{selectedIteration.testTopic || "Otonom OCR Testi"}</span></div>
+                  <div><strong>Taranan Kaynak Sayısı:</strong> <span className="font-mono text-[#024D43] font-bold">{selectedIteration.scannedSourcesCount || 3} Kaynak</span></div>
+                  <div><strong>Kaynakça Listesi:</strong> <span className="font-mono text-gray-600">{(selectedIteration.sourceManifesto || ['SROIE', 'CORD', 'IAM']).join(', ')}</span></div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-white p-2.5 rounded-lg border border-gray-100">
