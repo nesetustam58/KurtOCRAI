@@ -100,11 +100,12 @@ export class OcrBatchBenchmark {
       onProgress(i + 1, testCases.length, tc.id);
 
       try {
-        // Gerçek Tesseract motoru çağrısı
+        // Gerçek Tesseract motoru çağrısı ve güvenli tip dönüşümü
         const rawText = await ocrRunner(tc.imagePath, tc.docType);
-        const evaluation = OcrEvaluationEngine.evaluate(rawText, tc.docType);
+        const evaluation: any = OcrEvaluationEngine.evaluate(rawText, tc.docType);
+        const cleanedTextStr = evaluation.cleanedText || evaluation.text || rawText;
         
-        const cer = this.calculateCER(evaluation.cleanedText, tc.expectedText);
+        const cer = this.calculateCER(cleanedTextStr, tc.expectedText);
         const wer = 0; // Kelime hata oranı ölçeklenebilir
 
         results.push({
@@ -112,7 +113,7 @@ export class OcrBatchBenchmark {
           success: cer < 0.15, // %15 hata tolerans eşiği
           cer,
           wer,
-          detectedErrors: evaluation.detectedErrors,
+          detectedErrors: evaluation.detectedErrors || [],
           executionTimeMs: Date.now() - tStart
         });
       } catch (err) {
