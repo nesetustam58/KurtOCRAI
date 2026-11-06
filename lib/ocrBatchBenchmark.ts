@@ -10,6 +10,7 @@ export interface BenchmarkTestCase {
 
 export interface BenchmarkResult {
   testId: string;
+  topicTitle: string;
   success: boolean;
   cer: number;
   wer: number;
@@ -84,26 +85,32 @@ export class OcrBatchBenchmark {
       console.error("Akademik Optimizasyon Kayıt Hatası:", e);
     }
 
-    // Arşiv kayıtlarına bu iterasyona özel AI Export Payload da ekle
     try {
       const archives = JSON.parse(localStorage.getItem('kurtocrai_benchmark_archives') || '[]');
       const archiveItem = {
         iteration: currentIteration,
         timestamp: new Date().toISOString(),
+        testTopic: "Otonom OCR Laboratuvarı - Konu ve Kaynakça Doğrulama Testi",
+        scannedSourcesCount: results.length,
+        sourceManifesto: results.map(r => `${r.testId} (${r.topicTitle})`),
         averageCER: Number(avgCer.toFixed(4)),
         successCount: results.filter(r => r.success).length,
         totalTests: results.length,
         results,
         aiPayload: JSON.stringify({
-          context: `KurtOCRAI Archive Iteration #${currentIteration}`,
+          context: `KurtOCRAI Archive Iteration #${currentIteration} - Persistent R&D Log`,
           timestamp: new Date().toISOString(),
+          testTopic: "Otonom OCR Laboratuvarı - Konu ve Kaynakça Doğrulama Testi",
+          scannedSourcesCount: results.length,
+          sourceManifesto: results.map(r => `${r.testId} (${r.topicTitle})`),
           averageCER: Number(avgCer.toFixed(4)),
           results
         }, null, 2)
       };
 
       archives.push(archiveItem);
-      localStorage.setItem('kurtocrai_benchmark_archives', JSON.stringify(archives.slice(-15)));
+      // Kalıcılık için limit artırıldı ve localStorage kalıcılığı güçlendirildi
+      localStorage.setItem('kurtocrai_benchmark_archives', JSON.stringify(archives.slice(-30)));
     } catch (e) {
       console.error("Arşiv Kayıt Hatası:", e);
     }
@@ -138,8 +145,15 @@ export class OcrBatchBenchmark {
       
       const cer = this.calculateCER(cleanedTextStr, tc.targetText);
 
+      // Konu etiketlerini id'ye göre netleştirelim
+      let topicTitle = "Genel Metin";
+      if (tc.id.includes('SROIE')) topicTitle = "Fiş / Satış Belgesi (SROIE)";
+      else if (tc.id.includes('CORD')) topicTitle = "Kurumsal Fatura / Restoran Fişi (CORD)";
+      else if (tc.id.includes('IAM')) topicTitle = "El Yazısı Metin Analizi (IAM)";
+
       results.push({
         testId: tc.id,
+        topicTitle,
         success: cer < 0.22,
         cer,
         wer: 0,
@@ -172,7 +186,7 @@ export class OcrBatchBenchmark {
       const archives = JSON.parse(localStorage.getItem('kurtocrai_benchmark_archives') || '[]');
       
       const payload = {
-        context: "KurtOCRAI Autonomous Benchmark v9.0 Ultra-Resilient Report",
+        context: "KurtOCRAI Autonomous Benchmark v9.0 Ultra-Resilient Persistent Report",
         environment: "Cloudflare Edge + Client Mutator v9",
         totalActiveRules: rules.length,
         rulesSummary: rules,

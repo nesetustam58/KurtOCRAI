@@ -24,7 +24,7 @@ export default function BenchmarkArchiveDashboard() {
 
   useEffect(() => {
     loadArchives();
-    const interval = setInterval(loadArchives, 2000);
+    const interval = setInterval(loadArchives, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -45,8 +45,8 @@ export default function BenchmarkArchiveDashboard() {
     <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 mt-6">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h4 className="text-lg font-bold text-gray-800">📂 Tıklanabilir Geçmiş Arşiv & İterasyon Logları</h4>
-          <p className="text-xs text-gray-500">Geçmiş test koşumlarının detaylarını inceleyin, kaynakçaları takip edin.</p>
+          <h4 className="text-lg font-bold text-gray-800">📂 Tıklanabilir Geçmiş Arşiv & İterasyon Logları (Kalıcı R&D)</h4>
+          <p className="text-xs text-gray-500">Test konularını, kaynakçaları ve iterasyon bazlı AI JSON paketlerini buradan takip edin.</p>
         </div>
         {archives.length > 0 && (
           <button
@@ -89,14 +89,14 @@ export default function BenchmarkArchiveDashboard() {
             })}
           </div>
 
-          {/* Sağ Kolon: Seçilen İterasyonun Künyesi ve Detayları */}
+          {/* Sağ Kolon: Seçilen İterasyonun Künyesi ve Ünite Konu Dağılımı */}
           <div className="md:col-span-2 bg-gray-50 p-4 rounded-xl border border-gray-100 max-h-80 overflow-y-auto flex flex-col justify-between space-y-3">
             {selectedIteration ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-gray-200">
                   <div>
                     <span className="text-xs font-bold text-gray-800">İterasyon #{selectedIteration.iteration} Künye ve Detayları</span>
-                    <span className="block text-[10px] text-gray-500 font-mono">Tarih: {new Date(selectedIteration.timestamp).toLocaleString()}</span>
+                    <span className="block text-[10px] text-gray-500 font-mono">Kayıt: {new Date(selectedIteration.timestamp).toLocaleString()}</span>
                   </div>
                   <button
                     onClick={() => handleCopyArchivePayload(selectedIteration)}
@@ -108,9 +108,9 @@ export default function BenchmarkArchiveDashboard() {
 
                 {/* Test Konusu ve Kaynak Bilgileri */}
                 <div className="bg-white p-3 rounded-lg border border-gray-100 text-xs space-y-1.5">
-                  <div><strong>Test Konusu:</strong> <span className="text-gray-600">{selectedIteration.testTopic || "Otonom OCR Testi"}</span></div>
-                  <div><strong>Taranan Kaynak Sayısı:</strong> <span className="font-mono text-[#024D43] font-bold">{selectedIteration.scannedSourcesCount || 3} Kaynak</span></div>
-                  <div><strong>Kaynakça Listesi:</strong> <span className="font-mono text-gray-600">{(selectedIteration.sourceManifesto || ['SROIE', 'CORD', 'IAM']).join(', ')}</span></div>
+                  <div><strong>Test Konusu:</strong> <span className="text-gray-600">{selectedIteration.testTopic}</span></div>
+                  <div><strong>Taranan Kaynak Sayısı:</strong> <span className="font-mono text-[#024D43] font-bold">{selectedIteration.scannedSourcesCount} Kaynak</span></div>
+                  <div><strong>Kaynakça Listesi:</strong> <span className="font-mono text-gray-600">{(selectedIteration.sourceManifesto || []).join(', ')}</span></div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-white p-2.5 rounded-lg border border-gray-100">
@@ -120,8 +120,11 @@ export default function BenchmarkArchiveDashboard() {
 
                 <div className="space-y-1.5">
                   {selectedIteration.results?.map((res: any, rIdx: number) => (
-                    <div key={rIdx} className="bg-white p-2 rounded-lg border border-gray-100 flex justify-between items-center text-xs">
-                      <span className="font-semibold text-gray-700">{res.testId}</span>
+                    <div key={rIdx} className="bg-white p-2.5 rounded-lg border border-gray-100 flex justify-between items-center text-xs">
+                      <div>
+                        <span className="font-semibold text-gray-800 block">{res.testId}</span>
+                        <span className="text-[10px] text-[#024D43] font-medium">Konu: {res.topicTitle || "OCR Doğrulama"}</span>
+                      </div>
                       <div className="flex gap-3 font-mono">
                         <span className={res.success ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
                           %{(res.cer * 100).toFixed(2)}
