@@ -48,7 +48,6 @@ export class OcrBatchBenchmark {
     return matrix[lenA][lenB] / Math.max(1, lenB);
   }
 
-  // Sentetik OCR Gürültü Enjektörü (Gerçek dünya okuma hatalarını simüle eder)
   public static injectOcrNoise(text: string, noiseRate: number): string {
     return text.split('').map(char => {
       if (Math.random() < noiseRate) {
@@ -84,6 +83,20 @@ export class OcrBatchBenchmark {
       console.error("Akademik Optimizasyon Kayıt Hatası:", e);
     }
 
+    // Arşiv loglarını da sakla (AI Analizi İçin)
+    try {
+      const archives = JSON.parse(localStorage.getItem('kurtocr_benchmark_archives') || '[]');
+      archives.push({
+        iteration: currentIteration,
+        timestamp: new Date().toISOString(),
+        averageCER: avgCer,
+        results
+      });
+      localStorage.setItem('kurtocr_benchmark_archives', JSON.stringify(archives.slice(-10))); // Son 10 iterasyon
+    } catch (e) {
+      console.error("Arşiv Kayıt Hatası:", e);
+    }
+
     return {
       timestamp: new Date().toLocaleTimeString(),
       iteration: currentIteration,
@@ -106,7 +119,6 @@ export class OcrBatchBenchmark {
       const tStart = Date.now();
       onProgress(i + 1, testCases.length, tc.id);
 
-      // Simüle edilmiş otonom OCR mutasyon ve değerlendirme döngüsü
       const simulatedOcrOutput = this.injectOcrNoise(tc.targetText, tc.syntheticNoiseLevel);
       const evaluation: any = OcrEvaluationEngine.evaluate(simulatedOcrOutput, tc.docType);
       const cleanedTextStr = evaluation.cleanedText || evaluation.text || simulatedOcrOutput;
@@ -139,5 +151,25 @@ export class OcrBatchBenchmark {
       results,
       optimizationLog
     };
+  }
+
+  // Gemini (AI) için Yapılandırılmış Arşiv Çıktısı Üreteci
+  public static generateAiExportPayload(): string {
+    try {
+      const rules = JSON.parse(localStorage.getItem('kurtocr_adaptive_rules') || '[]');
+      const archives = JSON.parse(localStorage.getItem('kurtocr_benchmark_archives') || '[]');
+      
+      const payload = {
+        context: "KurtOCRAI Autonomous Benchmark & Self-Optimization Report",
+        environment: "Cloudflare Edge + Client Mutator",
+        totalActiveRules: rules.length,
+        rulesSummary: rules,
+        latestBenchmarkArchive: archives[archives.length - 1] || null
+      };
+
+      return "```json\n" + JSON.stringify(payload, null, 2) + "\n```";
+    } catch (e) {
+      return "Arşiv dışa aktarılamadı: " + e;
+    }
   }
 }
