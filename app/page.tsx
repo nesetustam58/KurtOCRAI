@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createWorker } from "tesseract.js";
 import { OcrEvaluationEngine, TestLibraryItem } from "../lib/ocrEvaluationEngine";
 import { OcrWebResearchAgent } from "../lib/ocrWebResearchAgent";
+import { DocumentClassifier } from "../lib/documentClassifier";
+import { ImagePreprocessor } from "../lib/imagePreprocessor";
 import TestLibraryPanel from "../components/TestLibraryPanel";
 
 interface HistoryItem {
@@ -97,75 +99,24 @@ export default function Home() {
   };
 
   const preprocessImage = async (file: File): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            resolve(e.target?.result as string);
-            return;
-          }
-
-          const scale = Math.max(3.8, 3800 / img.width);
-          const width = Math.round(img.width * scale);
-          const height = Math.round(img.height * scale);
-
-          canvas.width = width;
-          canvas.height = height;
-
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, width, height);
-          ctx.drawImage(img, 0, 0, width, height);
-
-          let imgData = ctx.getImageData(0, 0, width, height);
-          let data = imgData.data;
-
-          const grayValues = new Float32Array(width * height);
-          for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-            let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            grayValues[p] = gray;
-          }
-
-          const bgCanvas = document.createElement("canvas");
-          bgCanvas.width = width;
-          bgCanvas.height = height;
-          const bgCtx = bgCanvas.getContext("2d");
-          if (bgCtx) {
-            bgCtx.drawImage(canvas, 0, 0);
-            bgCtx.filter = 'blur(60px)';
-            bgCtx.drawImage(bgCanvas, 0, 0);
-            const bgData = bgCtx.getImageData(0, 0, width, height).data;
-
-            for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-              let original = grayValues[p];
-              let background = 0.299 * bgData[i] + 0.587 * bgData[i + 1] + 0.114 * bgData[i + 2];
-              
-              let corrected = background > 10 ? Math.min(255, Math.max(0, (original / (background + 1)) * 255)) : original;
-
-              let finalVal = 255;
-              if (corrected < 165) {
-                finalVal = Math.max(0, corrected * 0.2);
-              } else {
-                finalVal = 255;
-              }
-
-              data[i] = finalVal;
-              data[i + 1] = finalVal;
-              data[i + 2] = finalVal;
-            }
-          }
-
-          ctx.putImageData(imgData, 0, 0);
-          resolve(canvas.toDataURL("image/jpeg", 0.98));
-        };
-        img.src = e.target?.result as string;
+      reader.onload = async (e) => {
+        const rawDataUrl = e.target?.result as string;
+        try {
+          setStatusText("Otomatik doküman sınıflandırması yapılıyor...");
+          const classification = await DocumentClassifier.classifyImage(rawDataUrl);
+          
+          setStatusText(`${classification.docType.toUpperCase()} adaptif ön işleme katmanı çalışıyor...`);
+          const result = await ImagePreprocessor.processImage(rawDataUrl, classification);
+          
+          resolve(result.processedDataUrl);
+        } catch (err) {
+          console.error("Ön işleme hatası, orijinal görsel kullanılıyor:", err);
+          resolve(rawDataUrl);
+        }
       };
+      reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   };
@@ -180,15 +131,15 @@ export default function Home() {
     setActiveTab("text");
     setIsProcessing(true);
     setProgress(20);
-    setStatusText("Görsel kontrastı optimize ediliyor...");
+    setStatusText("Görsel yükleniyor...");
 
     try {
       const processedImageUrl = await preprocessImage(file);
       imagePreviewUrlRef.current = processedImageUrl;
       setImage(processedImageUrl);
 
-      setProgress(45);
-      setStatusText("Tesseract.js v5 Fiş Motoru çalışıyor...");
+      setProgress(50);
+      setStatusText("Tesseract.js v5 OCR Motoru tarama yapıyor...");
       
       const worker = await createWorker("tur+eng");
       await worker.setParameters({
@@ -198,7 +149,6 @@ export default function Home() {
       const ret = await worker.recognize(processedImageUrl);
       let rawText = (ret && ret.data && typeof ret.data.text === 'string') ? ret.data.text.trim() : "Metin okunamadı.";
 
-      // Fiş özel gelişmiş post-correction düzeltmeleri
       if (docType === 'fis') {
         rawText = rawText
           .replace(/DIMIRCIKARA/g, 'DEMİRCİKARA')
