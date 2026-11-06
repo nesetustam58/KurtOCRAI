@@ -38,7 +38,7 @@ export default function BatchBenchmarkWidget() {
     const realTesseractRunner = async (imagePath: string, docType: string): Promise<string> => {
       const worker = await createWorker('tur+eng');
       await worker.setParameters({
-        tessedit_pageseg_mode: docType === 'fis' ? '4' : '6',
+        tessedit_pageseg_mode: (docType === 'fis' ? '4' : '6') as any,
       });
 
       const ret = await worker.recognize(imagePath);
