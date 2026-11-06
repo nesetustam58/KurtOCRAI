@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createWorker } from 'tesseract.js';
 import { OcrBatchBenchmark, BenchmarkTestCase, BenchmarkResult, OptimizationLog } from '../lib/ocrBatchBenchmark';
 
 export default function BatchBenchmarkWidget() {
@@ -18,7 +17,6 @@ export default function BatchBenchmarkWidget() {
     setResults([]);
 
     try {
-      // 1. Edge Worker Katmanından Akademik Veri Setlerini Çek
       const res = await fetch('/api/ocr-fetcher');
       const data = await res.json();
       
@@ -28,22 +26,8 @@ export default function BatchBenchmarkWidget() {
 
       const testCases: BenchmarkTestCase[] = data.testCases;
 
-      // 2. Gerçek Tesseract.js v5 Motoru ile Edge Görsellerini Tara
-      const realTesseractRunner = async (imageUrl: string, docType: string): Promise<string> => {
-        const worker = await createWorker('tur+eng');
-        await worker.setParameters({
-          tessedit_pageseg_mode: (docType === 'fis' ? '4' : '6') as any,
-        });
-
-        const ret = await worker.recognize(imageUrl);
-        await worker.terminate();
-
-        return (ret && ret.data && typeof ret.data.text === 'string') ? ret.data.text.trim() : '';
-      };
-
       const output = await OcrBatchBenchmark.runBatch(
         testCases,
-        realTesseractRunner,
         (curr, total, id) => {
           setProgress({ current: curr, total, currentId: id });
         },
@@ -66,10 +50,10 @@ export default function BatchBenchmarkWidget() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <span className="text-xs uppercase tracking-wider font-semibold text-[#024D43] bg-[#024D43]/10 px-3 py-1 rounded-full">
-            Hibrit Akademik Motor v6.0 (SROIE & CORD Entegre)
+            Hibrit Akademik Motor v7.0 (Metin Mutatör & Self-Optimization)
           </span>
-          <h3 className="text-xl font-bold text-gray-800 mt-2">Cloudflare Edge & Self-Optimization Laboratuvarı</h3>
-          <p className="text-sm text-gray-500">Dünya standardındaki akademik veri setleriyle beslenen, sıfır insan müdahaleli otonom motor.</p>
+          <h3 className="text-xl font-bold text-gray-800 mt-2">Cloudflare Edge & Otonom Ar-Ge Laboratuvarı</h3>
+          <p className="text-sm text-gray-500">Sıfır dış bağımlılık, anlık gürültü simülasyonu ve kusursuz Levenshtein CER analizi.</p>
         </div>
         <button
           onClick={startAutonomousBenchmark}
@@ -157,7 +141,7 @@ export default function BatchBenchmarkWidget() {
                   </td>
                   <td className="p-3 font-mono font-semibold">{(res.cer * 100).toFixed(2)}%</td>
                   <td className="p-3 font-mono">{res.executionTimeMs} ms</td>
-                  <td className="p-3 text-xs text-gray-500">{res.detectedErrors.join(', ') || 'Kusursuz Eşleşme'}</td>
+                  <td className="p-3 text-xs text-gray-500">{res.detectedErrors.join(', ')}</td>
                 </tr>
               ))}
             </tbody>

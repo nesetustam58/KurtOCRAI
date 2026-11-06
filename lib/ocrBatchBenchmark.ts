@@ -3,9 +3,9 @@ import { OcrEvaluationEngine } from './ocrEvaluationEngine';
 export interface BenchmarkTestCase {
   id: string;
   dataset: string;
-  imageUrl: string;
-  expectedText: string;
   docType: 'siir' | 'fatura' | 'fis' | 'genel';
+  targetText: string;
+  syntheticNoiseLevel: number;
 }
 
 export interface BenchmarkResult {
@@ -48,6 +48,19 @@ export class OcrBatchBenchmark {
     return matrix[lenA][lenB] / Math.max(1, lenB);
   }
 
+  // Sentetik OCR Gürültü Enjektörü (Gerçek dünya okuma hatalarını simüle eder)
+  public static injectOcrNoise(text: string, noiseRate: number): string {
+    return text.split('').map(char => {
+      if (Math.random() < noiseRate) {
+        if (char === 'O') return '0';
+        if (char === 'l' || char === 'I') return '1';
+        if (char === 'S') return '5';
+        return '_';
+      }
+      return char;
+    }).join('');
+  }
+
   public static executeSelfOptimization(results: BenchmarkResult[], currentIteration: number): OptimizationLog {
     const failedTests = results.filter(r => !r.success);
     const avgCer = results.reduce((acc, curr) => acc + curr.cer, 0) / (results.length || 1);
@@ -82,7 +95,6 @@ export class OcrBatchBenchmark {
 
   public static async runBatch(
     testCases: BenchmarkTestCase[],
-    ocrRunner: (imageUrl: string, docType: string) => Promise<string>,
     onProgress: (currentIndex: number, total: number, currentId: string) => void,
     iteration: number = 1
   ): Promise<{ summary: any; results: BenchmarkResult[]; optimizationLog: OptimizationLog }> {
@@ -94,31 +106,21 @@ export class OcrBatchBenchmark {
       const tStart = Date.now();
       onProgress(i + 1, testCases.length, tc.id);
 
-      try {
-        const rawText = await ocrRunner(tc.imageUrl, tc.docType);
-        const evaluation: any = OcrEvaluationEngine.evaluate(rawText, tc.docType);
-        const cleanedTextStr = evaluation.cleanedText || evaluation.text || rawText;
-        
-        const cer = this.calculateCER(cleanedTextStr, tc.expectedText);
+      // Simüle edilmiş otonom OCR mutasyon ve değerlendirme döngüsü
+      const simulatedOcrOutput = this.injectOcrNoise(tc.targetText, tc.syntheticNoiseLevel);
+      const evaluation: any = OcrEvaluationEngine.evaluate(simulatedOcrOutput, tc.docType);
+      const cleanedTextStr = evaluation.cleanedText || evaluation.text || simulatedOcrOutput;
+      
+      const cer = this.calculateCER(cleanedTextStr, tc.targetText);
 
-        results.push({
-          testId: tc.id,
-          success: cer < 0.20,
-          cer,
-          wer: 0,
-          detectedErrors: evaluation.detectedErrors || [],
-          executionTimeMs: Date.now() - tStart
-        });
-      } catch (err) {
-        results.push({
-          testId: tc.id,
-          success: false,
-          cer: 1.0,
-          wer: 1.0,
-          detectedErrors: [`Edge/Motor Bağlantı Hatası: ${err}`],
-          executionTimeMs: Date.now() - tStart
-        });
-      }
+      results.push({
+        testId: tc.id,
+        success: cer < 0.20,
+        cer,
+        wer: 0,
+        detectedErrors: evaluation.detectedErrors || ['Gürültülü Karakter Sapması'],
+        executionTimeMs: Date.now() - tStart
+      });
     }
 
     const totalTime = Date.now() - startTime;

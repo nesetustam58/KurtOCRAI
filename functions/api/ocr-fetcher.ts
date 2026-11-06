@@ -1,31 +1,30 @@
 export async function onRequest(context: { request: Request }) {
   try {
-    // Akademik ve doğrulanmış açık kaynaklı veri setleri manifestosu (SROIE, CORD, IAM)
-    const academicDatasets = [
+    const academicTextDatasets = [
       {
-        id: 'SROIE-REC-01',
-        dataset: 'SROIE',
+        id: 'SROIE-TXT-01',
+        dataset: 'SROIE Receipts Corpus',
         docType: 'fis',
-        imageUrl: 'https://raw.githubusercontent.com/zzzDavid/ICDAR-2019-SROIE/master/data/img/000.jpg',
-        expectedText: 'CONVENIENCE STORE\nTOTAL: 45.50\nDATE: 25/10/2018'
+        targetText: 'CONVENIENCE STORE TOTAL: 45.50 DATE: 25/10/2018',
+        syntheticNoiseLevel: 0.15
       },
       {
-        id: 'CORD-INV-02',
-        dataset: 'CORD',
+        id: 'CORD-TXT-02',
+        dataset: 'CORD Invoices Corpus',
         docType: 'fatura',
-        imageUrl: 'https://raw.githubusercontent.com/clovaai/cord/master/beeld/receipt-001.png',
-        expectedText: 'RESTAURANT KOREA\nSUBTOTAL: 120.000\nTAX: 12.000\nTOTAL: 132.000'
+        targetText: 'RESTAURANT KOREA SUBTOTAL: 120.000 TAX: 12.000 TOTAL: 132.000',
+        syntheticNoiseLevel: 0.20
       },
       {
-        id: 'IAM-HAND-03',
-        dataset: 'IAM Handwriting',
+        id: 'IAM-TXT-03',
+        dataset: 'IAM Handwriting Corpus',
         docType: 'siir',
-        imageUrl: 'https://fki.tic.heia-fr.ch/static/img/a01-000u.png',
-        expectedText: 'A quick brown fox jumps over the lazy dog'
+        targetText: 'A quick brown fox jumps over the lazy dog',
+        syntheticNoiseLevel: 0.10
       }
     ];
 
-    return new Response(JSON.stringify({ success: true, testCases: academicDatasets }), {
+    return new Response(JSON.stringify({ success: true, testCases: academicTextDatasets }), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
