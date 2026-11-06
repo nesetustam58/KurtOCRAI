@@ -7,6 +7,7 @@ import { OcrEvaluationEngine, TestLibraryItem } from "../lib/ocrEvaluationEngine
 import { OcrWebResearchAgent } from "../lib/ocrWebResearchAgent";
 import { DocumentClassifier } from "../lib/documentClassifier";
 import { ImagePreprocessor } from "../lib/imagePreprocessor";
+import { OcrPostProcessor } from "../lib/ocrPostProcessor";
 import TestLibraryPanel from "../components/TestLibraryPanel";
 
 interface HistoryItem {
@@ -149,7 +150,9 @@ export default function Home() {
       const ret = await worker.recognize(processedImageUrl);
       let rawText = (ret && ret.data && typeof ret.data.text === 'string') ? ret.data.text.trim() : "Metin okunamadı.";
 
+      // Akıllı Post-Processor Sözlük Düzeltmesi
       if (docType === 'fis') {
+        rawText = OcrPostProcessor.cleanThermalReceipt(rawText);
         rawText = rawText
           .replace(/DIMIRCIKARA/g, 'DEMİRCİKARA')
           .replace(/OFMIRCIKARA/g, 'DEMİRCİKARA')
@@ -424,7 +427,7 @@ export default function Home() {
                 </button>
               </div>
               <div className="text-[11px] font-medium text-[var(--ink-2)]">
-                {charCount} karakter | {wordCount} kelime
+                {charCount} kelime / {charCount} karakter
               </div>
             </div>
 
