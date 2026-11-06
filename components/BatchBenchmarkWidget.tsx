@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { OcrBatchBenchmark, BenchmarkTestCase, BenchmarkResult, OptimizationLog } from '../lib/ocrBatchBenchmark';
 import AdaptiveRulesDashboard from './AdaptiveRulesDashboard';
+import BenchmarkArchiveDashboard from './BenchmarkArchiveDashboard';
 
 export default function BatchBenchmarkWidget() {
   const [isRunning, setIsRunning] = useState(false);
@@ -60,7 +61,7 @@ export default function BatchBenchmarkWidget() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <span className="text-xs uppercase tracking-wider font-semibold text-[#024D43] bg-[#024D43]/10 px-3 py-1 rounded-full">
-              Hibrit Akademik Motor v8.0 (AI-Ready Arşiv & Self-Healing)
+              Hibrit Akademik Motor v9.0 (AI-Ready Arşiv & Self-Healing)
             </span>
             <h3 className="text-xl font-bold text-gray-800 mt-2">Cloudflare Edge & Otonom Ar-Ge Laboratuvarı</h3>
             <p className="text-sm text-gray-500">Sıfır dış bağımlılık, anlık gürültü simülasyonu ve Gemini uyumlu yapılandırılmış log dışa aktarımı.</p>
@@ -172,6 +173,9 @@ export default function BatchBenchmarkWidget() {
 
       {/* Dinamik Kural Yönetim Paneli */}
       <AdaptiveRulesDashboard />
+
+      {/* Tıklanabilir Geçmiş Arşiv Paneli */}
+      <BenchmarkArchiveDashboard />
     </div>
   );
 }
