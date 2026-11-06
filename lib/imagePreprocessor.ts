@@ -134,7 +134,7 @@ export class ImagePreprocessor {
    * Sonuç `image.data` içine yerinde (in-place) yazılır; uygulanan filtrelerin listesi döner.
    *
    * Sıra: Gri ton → Gölge/ışık düzeltme → Kontrast germe → Gürültü azaltma
-   *        → Unsharp mask → Otsu/Sauvola ikilileştirme → Leke temizliği
+   *       → Unsharp mask → Otsu/Sauvola ikilileştirme → Leke temizliği
    */
   public static processThermalReceipt(
     image: PixelBuffer,
@@ -638,4 +638,94 @@ export class ImagePreprocessor {
 
   /**
    * İkilileştirme. Dönen `ink[i] === 1` → siyah (mürekkep), 0 → beyaz (kâğıt).
-   * Sauvola: T = mean * (1 + k * (std / 128 -
+   * Sauvola: T = mean * (1 + k * (std / 128 - 1)) — silik yazıda ve düşük kontrastta
+   * Niblack/Bradley'e göre çok daha kararlıdır; boş kâğıt bölgelerinde sahte leke üretmez.
+   */
+  private static binarize(
+    gray: Float32Array,
+    w: number,
+    h: number,
+    o: ThermalReceiptOptions
+  ): { ink: Uint8Array; label: string } {
+    const n = w * h;
+    const ink = new Uint8Array(n);
+    const otsuT = ImagePreprocessor.otsuThreshold(gray);
+
+    if (o.binarization === 'otsu') {
+      for (let i = 0; i < n; i++) ink[i] = gray[i] <= otsuT ? 1 : 0;
+      return { ink, label: `Otsu Global Thresholding (T=${otsuT})` };
+    }
+
+    const radius = Math.max(7, Math.round(Math.min(w, h) * o.adaptiveRadiusRatio));
+    const mean = ImagePreprocessor.boxBlur(gray, w, h, radius);
+    const squared = new Float32Array(n);
+    for (let i = 0; i < n; i++) squared[i] = gray[i] * gray[i];
+    const meanSq = ImagePreprocessor.boxBlur(squared, w, h, radius);
+
+    const k = o.sauvolaK;
+    const guard = otsuT + o.otsuTolerance;
+    const useGuard = o.binarization === 'hybrid';
+
+    for (let i = 0; i < n; i++) {
+      const m = mean[i];
+      const variance = meanSq[i] - m * m;
+      const std = variance > 0 ? Math.sqrt(variance) : 0;
+      const localT = m * (1 + k * (std / 128 - 1));
+      const v = gray[i];
+      ink[i] = v <= localT && (!useGuard || v <= guard) ? 1 : 0;
+    }
+
+    return {
+      ink,
+      label: useGuard
+        ? `Hybrid Otsu + Sauvola Adaptive Thresholding (Otsu T=${otsuT})`
+        : 'Sauvola Adaptive Thresholding',
+    };
+  }
+
+  /**
+   * Küçük siyah bileşenleri (leke, tek piksel gürültü) siler.
+   * 8-bağlantılı BFS; alanı `minArea`'dan küçük bileşenler beyaza çevrilir.
+   */
+  private static removeSpecks(ink: Uint8Array, w: number, h: number, minArea: number): number {
+    const n = w * h;
+    const visited = new Uint8Array(n);
+    const queue = new Int32Array(n);
+    let removedPixels = 0;
+
+    for (let start = 0; start < n; start++) {
+      if (!ink[start] || visited[start]) continue;
+
+      let head = 0;
+      let tail = 0;
+      queue[tail++] = start;
+      visited[start] = 1;
+
+      while (head < tail) {
+        const idx = queue[head++];
+        const x = idx % w;
+        const y = (idx - x) / w;
+        for (let dy = -1; dy <= 1; dy++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            if (nx < 0 || nx >= w) continue;
+            const ni = ny * w + nx;
+            if (ink[ni] && !visited[ni]) {
+              visited[ni] = 1;
+              queue[tail++] = ni;
+            }
+          }
+        }
+      }
+
+      if (tail < minArea) {
+        for (let k = 0; k < tail; k++) ink[queue[k]] = 0;
+        removedPixels += tail;
+      }
+    }
+    return removedPixels;
+  }
+}
