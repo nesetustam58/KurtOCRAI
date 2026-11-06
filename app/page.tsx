@@ -9,6 +9,7 @@ import { DocumentClassifier } from "../lib/documentClassifier";
 import { ImagePreprocessor } from "../lib/imagePreprocessor";
 import { OcrPostProcessor } from "../lib/ocrPostProcessor";
 import TestLibraryPanel from "../components/TestLibraryPanel";
+import { validateDocumentImage } from "@/lib/imageValidator";
 
 interface HistoryItem {
   id: string;
@@ -33,6 +34,7 @@ export default function Home() {
   const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>([]);
   const [evaluationMeta, setEvaluationMeta] = useState<string>("");
   const [docType, setDocType] = useState<'fis' | 'siir' | 'genel'>('fis');
+  const [validationError, setValidationError] = useState<string | null>(null); // 👈 Yeni şık hata state'imiz
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imagePreviewUrlRef = useRef<string | null>(null);
@@ -124,6 +126,17 @@ export default function Home() {
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return;
+
+    setValidationError(null); // Yeni yüklemede önceki hatayı temizle
+    setStatusText("Akıllı görsel içerik doğrulaması yapılıyor...");
+    const validation = await validateDocumentImage(file);
+    
+    if (!validation.isValid) {
+      setValidationError(validation.reason || "Geçersiz doküman görseli."); // 👈 Tarayıcı alerti yerine şık tasarımı tetikliyoruz
+      setStatusText("Hazır");
+      return;
+    }
+
     if (imagePreviewUrlRef.current) URL.revokeObjectURL(imagePreviewUrlRef.current);
     
     setFileName(file.name);
@@ -150,7 +163,6 @@ export default function Home() {
       const ret = await worker.recognize(processedImageUrl);
       let rawText = (ret && ret.data && typeof ret.data.text === 'string') ? ret.data.text.trim() : "Metin okunamadı.";
 
-      // Akıllı Post-Processor Sözlük Düzeltmesi
       if (docType === 'fis') {
         rawText = OcrPostProcessor.cleanThermalReceipt(rawText);
         rawText = rawText
@@ -266,6 +278,7 @@ export default function Home() {
     setStatusText("Hazır");
     setIsProcessing(false);
     setEvaluationMeta("");
+    setValidationError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -345,6 +358,25 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* 👇 Şık, Temaya Uygun Hata Banner'ı */}
+        {validationError && (
+          <div className="mb-6 p-4 rounded-[20px] bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 flex items-center justify-between shadow-sm transition-all">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <div className="font-semibold text-[14px]">Geçersiz Doküman Formatı</div>
+                <div className="text-[13px] opacity-90">{validationError}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setValidationError(null)}
+              className="px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-[12px] font-semibold transition"
+            >
+              Kapat
+            </button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-6 items-stretch mb-12">
           {/* Upload Section */}
@@ -427,7 +459,7 @@ export default function Home() {
                 </button>
               </div>
               <div className="text-[11px] font-medium text-[var(--ink-2)]">
-                {charCount} kelime / {charCount} karakter
+                {wordCount} kelime / {charCount} karakter
               </div>
             </div>
 
